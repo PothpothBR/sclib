@@ -1,0 +1,14 @@
+id de alertas: -----------
+1 - valor de atribuicao nulo
+2 - argumento nao definido
+3 - processo finalizado
+4 - nao encontrado
+
+id de erros: XXXXXXXXX
+-1 - estouro no limite de alocamento de memoria
+-2 - buffer nulo, erro ao liberar/limpar/alocar/modificar memoria
+-3 - argumento nulo 
+-4 - argumento invalido
+-5 - nao encontrado
+-6 - erro da biblioteca do sistema
+-7 - erro ao enviar ou receber dados

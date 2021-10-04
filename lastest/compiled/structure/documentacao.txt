@@ -1,0 +1,135 @@
+
+    Documentacao da biblioteca de alto nivel para acesso e manipulacao a rede
+
+* Netlink(linktype, port, ip = "localhost", package = 0)
+    Estrutura para gerir uma conexao de dados TCP, podendo agir como cliente ou servidor.
+
+    * bool linktype
+        Flag para definir a forma de conexao, valores possieveis: 
+        * CLIENTSIDE - atuara no lado do cliente.
+        * SERVERSIDE - atuara no lado do servidor.
+
+    * char* port
+        A porta em que o servidor ira atuar, em formato de string.
+
+    * char* ip
+        O endereco de ip do servidor, em formato de string.
+        E pre definido como "localhost".
+        Qualquer valor inserido em ip e ignorado caso a conexao atue como servidor.
+
+    * int package
+        Informa o tamanho do pacote de dados a ser usado ao enviar dados
+        se o valor for 0, nao havera envio em pacotes, ocorrera de uma unica vez.
+        Ao enviar dados em pacotes, pode-se previnir a perca de dados, ja que os mesmos sao enviados de forma fracionada.
+
+    --possiveis erros--
+
+    * tamanho de pacote de dados incorreto - package parametro e menor que 0
+
+    * server ip not informed - ip parametro e nulo, so ocorre se CLIENTSIDE for definido, pois se SERVERSIDE definido
+    o parametro ip é ignorado
+
+    * impossivel de conectar encerrando - esgotando as 4 tentativas de conexao, o sistema é incerrado pois o servidor recusou
+    a conexao ou nao existe
+
+    * qualquer erro recebido no modelo "erro coletado: " é referente a winsock error, e deve ser encontrado na pagine de erros
+    da microsoft "Códigos de erro do Windows Sockets"
+
+    --metodos--
+
+    * recvdata(data)
+        Recebe dados da conexao, independente se ocorre livremente ou em pacotes.
+        O recebimento livre recebe o os dados em seu tamanho total e o insere na data estrutura
+        juntamente com informacoes sobre o pacote recebido.
+        O recebimento em pacote recebe os dados fracionados, sendo enviado um pacote por vez,
+        para esse formato de envio funcionar deve-se informar uma estrutura NETDATA que nunca 
+        foi usada, contendo somente os dados a serem enviados, para a manipulacao do metodo.
+
+        --possiveis erros--
+
+        * tamanho real de NETDATA.data nao corresponde a NETDATA.lenght - isso ocorre quando NETDATA.data tem um tamanho
+        diferente no especificado por NETDATA.lenght. Ex:
+            NETDATA data;
+            int x = 10;
+            DATA_CLEAN(&data, sizeof(int&));
+            data.data = (void*)&x;
+            myserver.senddata(&data);
+        O tamanho de int& e diferente de (void*)&x, causando o erro. O correto seria int*.
+
+        * buffer nulo inserido como argumento - ocorre quando NETDATA.data == nullptr ou NETDATA == nullptr. Ex:
+            NETDATA data;
+            myserver.senddata(&data);
+        Nada foi inserido, sendo impossivel enviar algo.
+
+        * tamanho do buffer nao informado - ocorre quando NETDATA.lenght == 0. Ex:
+            NETDATA data;
+            int x = 10;
+            data.data = (void*)&x;
+            myserver.senddata(&data);
+        Nao sendo especificado o tamanho da data, ocorre erro.
+
+        * tamanho do pacote de dados negativo Netlink.sendpacklen - ocorre quando o pacote de dados definido é negativo,
+        isso ocorre devido a um mau uso da biblioteca. Ex:
+            Netlink server(SERVERSIDE, "29017");
+            server.sendpacklen = -20;
+            NETDATA data = "dados";
+            myserver.senddata(&data);
+        Ocorrera erro pois o pacote de dados e < 0.
+
+        * no recebimento de dados em pacotes, se nada for recebido, a a chance de NETDATA.loaded ser maior ou igual a NETDATA.packload
+
+    * senddata(data)
+        Envia dados para a conexao, de forma livre, envio integral, ou em pacotes, envio em pedacos fracionados.
+        O envio e feito com uma estrutura NETDATA nao utilizada anteriormente aonde é recebido o dado integral,
+        e posteriormente dividido em pacotes os quais tambem ficam armazenados na estrutura.
+        Nao deve-se manipular os dados da NETDATA estrutura, pois sao unicamente de uso da estrutura Netlink.
+
+        --possiveis erros--
+
+        * tamanho real de NETDATA.data nao corresponde a NETDATA.lenght - isso ocorre quando NETDATA.data tem um tamanho
+        diferente no especificado por NETDATA.lenght. Ex:
+            NETDATA data;
+            int x = 10;
+            DATA_CLEAN(&data, sizeof(int&));
+            data.data = (void*)&x;
+            myserver.senddata(&data);
+        O tamanho de int& e diferente de (void*)&x, causando o erro. O correto seria int*.
+
+        * buffer nulo inserido como argumento - ocorre quando NETDATA.data == nullptr ou NETDATA == nullptr. Ex:
+            NETDATA data;
+            myserver.senddata(&data);
+        Nada foi inserido, sendo impossivel enviar algo.
+
+        * tamanho do buffer nao informado - ocorre quando NETDATA.lenght == 0. Ex:
+            NETDATA data;
+            int x = 10;
+            data.data = (void*)&x;
+            myserver.senddata(&data);
+        Nao sendo especificado o tamanho da data, ocorre erro.
+
+        * tamanho do pacote de dados negativo Netlink.sendpacklen - ocorre quando o pacote de dados definido é negativo,
+        isso ocorre devido a um mau uso da biblioteca. Ex:
+            Netlink server(SERVERSIDE, "29017");
+            server.sendpacklen = -20;
+            NETDATA data = "dados";
+            myserver.senddata(&data);
+        Ocorrera erro pois o pacote de dados e < 0.
+
+        * em envios de pacotes, se so parte final dos dados for enviado, significa que NETDATA.loaded > 0, por isso toda vez que for
+        reutilizar a estrutura para enviar dados use DATA_CLEAN(NETDATA *data) antes de inserir dados para limpar a estrutura
+        para o reenvio e iniciar a data em 0.
+
+        * em envio de pacotes, se so parte final dos dados for enviado, significa que NETDATA.packload e menor que o nescessario,
+        que NETDATA.lenght esta incorreto, ou que Netlink.sendpacklen esta incorreto. E recomendado usar DATA_CLEAN(NETDATA *data) 
+        antes de inserir dados para limpar a estrutura para o reenvio e iniciar a data em 0.
+
+* NETDATA
+    Estrutura para armazenar e tratar dados da conexao, tanto ao receber quanto ao enviar.
+    A a posibilidade de inserir dados a estrutura como se insere em uma variavel. Ex:
+        NETDATA data = "meus dados";
+        data = "substitui por esses dados";
+        data = '0';
+        data = 22;
+        data = 345.567;
+    Os dados podem ser inseridos a vontade, nao importando o tipo, se inseridos somente desta forma
+    nao e recomendavel modificar NETDATA.data ao usar o metodo de insercao acima, para tal uso deve-se
